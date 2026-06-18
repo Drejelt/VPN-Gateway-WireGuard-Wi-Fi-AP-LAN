@@ -45,6 +45,7 @@ trap 'error "Error on line $LINENO: $BASH_COMMAND"' ERR
 
 # ── Distro check ─────────────────────────────────────────────
 if [ -f /etc/os-release ]; then
+    # shellcheck source=/dev/null
     source /etc/os-release
     if [[ "$ID" != "ubuntu" && "$ID" != "debian" && "${ID_LIKE:-}" != *"debian"* ]]; then
         error "Only Ubuntu/Debian are supported. Detected: $ID"
@@ -65,6 +66,7 @@ mark_done() {
 }
 
 # ── Load saved config ────────────────────────────────────────
+# shellcheck source=/dev/null
 [ -f "$CONFIG_FILE" ] && source "$CONFIG_FILE"
 
 # Defaults for all SAVED_* variables (guard against the -u flag)
@@ -1120,27 +1122,35 @@ header "Installation check"
 
 echo ""
 info "WireGuard:"
-ip link show wg0 &>/dev/null \
-    && success "wg0 is up" \
-    || warn "wg0 not active (will come up via the service after reboot)"
+if ip link show wg0 &>/dev/null; then
+    success "wg0 is up"
+else
+    warn "wg0 not active (will come up via the service after reboot)"
+fi
 
 echo ""
 info "hostapd:"
-systemctl is-active --quiet hostapd \
-    && success "hostapd running (SSID=$SSID)" \
-    || warn "hostapd not running (will come up via the service)"
+if systemctl is-active --quiet hostapd; then
+    success "hostapd running (SSID=$SSID)"
+else
+    warn "hostapd not running (will come up via the service)"
+fi
 
 echo ""
 info "dnsmasq:"
-systemctl is-active --quiet dnsmasq \
-    && success "dnsmasq running" \
-    || warn "dnsmasq not running (will come up via the service)"
+if systemctl is-active --quiet dnsmasq; then
+    success "dnsmasq running"
+else
+    warn "dnsmasq not running (will come up via the service)"
+fi
 
 echo ""
 info "NetworkManager (unmanaged):"
-grep -q "unmanaged-devices" /etc/NetworkManager/NetworkManager.conf 2>/dev/null \
-    && success "unmanaged-devices configured" \
-    || warn "unmanaged-devices not configured"
+if grep -q "unmanaged-devices" /etc/NetworkManager/NetworkManager.conf 2>/dev/null; then
+    success "unmanaged-devices configured"
+else
+    warn "unmanaged-devices not configured"
+fi
 
 echo ""
 info "Component status:"
@@ -1176,7 +1186,9 @@ echo -e "  Config            : ${CYAN}$CONFIG_FILE${NC}"
 echo ""
 echo "════ Finished: $(date '+%Y-%m-%d %H:%M:%S') ════"
 
-[ "$TELEGRAM" = true ] && /usr/local/bin/vpn-tg.sh vpn_up || true
+if [ "$TELEGRAM" = true ]; then
+    /usr/local/bin/vpn-tg.sh vpn_up || true
+fi
 
 read -rp "  Reboot now? (y/n): " _REBOOT
 [ "$_REBOOT" = "y" ] && reboot
